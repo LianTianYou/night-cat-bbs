@@ -16,13 +16,14 @@ def login():
         "status": "no",
         "data": dict()
     }
-    if not request_util.auth_args(user_name, password):
+
+    if not request_util.check_args(user_name, password):
         data["data"]["msg"] = "参数错误"
         return jsonify(data)
 
     user = user_util.get_user(user_name)
     if user_util.auth_user(user, password):
-        user_id = user.id
+        user_id = user.user_id
         data["status"] = "ok"
         data["data"]["msg"] = "登录成功"
         token = create_access_token(identity = user_id)
@@ -30,6 +31,9 @@ def login():
     else:
         data["data"]["msg"] = "用户名或密码错误"
         return jsonify(data)
+
+    user_util.get_user_data(data, user)
+
     return jsonify(data)
 
 # 注销

@@ -3,7 +3,7 @@ from flask_jwt_extended import JWTManager
 
 jwt = JWTManager()
 
-def auth_args(*args) -> bool:
+def check_args(*args) -> bool:
     is_full = True
     for i in args:
         if not i:

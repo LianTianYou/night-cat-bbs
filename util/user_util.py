@@ -1,6 +1,8 @@
 from flask_jwt_extended import create_access_token
 from tables import User
 from db import db
+from util import img_util, value_util
+
 
 def get_user(user_name : str) -> User:
     return User.query.filter_by(user_name = user_name).first()
@@ -60,3 +62,19 @@ def update_pwd(user : User, new_password : str):
 def create_token(user_id):
     token = create_access_token(identity = user_id)
     return token
+
+def get_user_data(data : dict, user : User) -> dict:
+    profile_url = user.profile
+    if profile_url:
+        profile_url = img_util.get_profile_url(profile_url)
+
+    data['data']['info'] = {
+        "user_name": user.user_name,
+        "email": user.email,
+        "sex": user.sex,
+        "age": user.age,
+        "follow_count": user.follow_count,
+        "fans_count": user.fans_count,
+        "profile": profile_url
+    }
+    return data

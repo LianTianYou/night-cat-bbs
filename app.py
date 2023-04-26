@@ -3,7 +3,7 @@ from blueprint.login import bp as login_bp
 from blueprint.user import bp as user_bp
 from blueprint.post import bp as post_bp
 from blueprint.test import bp as test_bp
-from flask_jwt_extended import JWTManager, jwt_required, get_jwt_identity, decode_token, get_jwt
+from blueprint.home import bp as home_bp
 from flask_cors import CORS, cross_origin
 from util.request_util import jwt
 from db import db
@@ -14,6 +14,7 @@ app.register_blueprint(login_bp)
 app.register_blueprint(user_bp)
 app.register_blueprint(test_bp)
 app.register_blueprint(post_bp)
+app.register_blueprint(home_bp)
 app.config.from_object(config)
 db.init_app(app)
 jwt.init_app(app)

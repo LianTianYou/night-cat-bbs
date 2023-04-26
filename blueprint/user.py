@@ -1,8 +1,8 @@
 from flask import Blueprint, request, jsonify, session
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from db import db
-from tables import User
-from util import user_util, request_util, img_util, oss_util
+from tables import User, Follow
+from util import user_util, request_util, img_util, oss_util, value_util
 
 bp = Blueprint("user", __name__, url_prefix = "/api")
 
@@ -18,7 +18,7 @@ def update_pwd():
         "status": "no",
     }
 
-    if not request_util.auth_args(user_name, password, new_password):
+    if not request_util.check_args(user_name, password, new_password):
         data["data"]["msg"] = "参数不足"
         return jsonify(data)
 
@@ -69,8 +69,12 @@ def set_info():
     db.session.commit()
 
     data = {
+        "data": {
+            "msg": "修改成功"
+        },
         "status": "ok"
     }
+    data = user_util.get_user_data(data, user)
 
     return jsonify(data)
 
@@ -91,17 +95,54 @@ def get_info():
     if user is None:
         return jsonify(data)
 
-    profile_path = user.profile
-    if profile_path:
-        profile_path = f'{oss_util.get_host()}/profile/{profile_path}'
+    data = user_util.get_user_data(data, user)
 
-    data['data']['info'] = {
-        "user_name": user.user_name,
-        "email": user.email,
-        "sex": user.sex,
-        "age": user.age,
-        "profile": profile_path
-    }
     data['data']['msg'] = '获取成功'
     data['status'] = 'ok'
+    return jsonify(data)
+
+def add_follow(user : User, target_user : User):
+    user.follow_count += 1
+    target_user.fans_count += 1
+
+def unfollow(user : User, target_user : User):
+    if user.follow_count and target_user.fans_count:
+        user.follow_count -= 1
+        target_user.fans_count -= 1
+@bp.route('/set_follow', methods=['POST'])
+@jwt_required()
+def set_follow():
+    data = {
+        "data": {
+            "msg": "关注成功"
+        },
+        "status": "ok"
+    }
+
+    user_id = get_jwt_identity()
+    target_id = request.json.get('target_id')
+
+    if not request_util.check_args(target_id):
+        data['data']['msg'] = '参数错误'
+        data['status'] = 'no'
+        return jsonify(data)
+
+    user = User.query.get(user_id)
+    target_user = User.query.get(target_id)
+    if not target_user:
+        data['data']['msg'] = '关注的用户不存在'
+        data['status'] = 'no'
+        return jsonify(data)
+
+    follow = Follow.query.filter_by(user_id=user_id, target_id=target_id).first()
+    if not follow:
+        follow = Follow(user_id=user_id, target_id=target_id)
+        add_follow(user, target_user)
+        db.session.add(follow)
+    else:
+        unfollow(user, target_user)
+        data['data']['msg'] = '取消关注'
+        db.session.delete(follow)
+    db.session.commit()
+
     return jsonify(data)

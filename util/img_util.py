@@ -27,13 +27,22 @@ def upload_post_image(data : bytes, post_id : int, order_number : int):
     oss_util.upload_file(file_path, data)
     return file_name
 
-def base_to_bytes(code : str):
+def base_to_bytes(code : str) -> bytes:
     if code:
         start_index = code.find(',')
         if start_index != -1:
             code = code[start_index + 1:]
     data = base64.b64decode(code)
     return data
+
+def get_profile_url(file_name : str) -> str:
+    if file_name:
+        return f'{oss_util.get_host()}/profile/{file_name}'
+    else:
+        return None
+
+def get_post_image_url(file_name : str) -> str:
+    return f'{oss_util.get_host()}/post_image/{file_name}'
 
 if __name__ == '__main__':
     pass
