@@ -1,7 +1,8 @@
-from flask_jwt_extended import create_access_token
+from flask import request
+from flask_jwt_extended import create_access_token, decode_token
 from tables import User
 from db import db
-from util import img_util, value_util
+from util import img_util
 
 
 def get_user(user_name : str) -> User:
@@ -11,6 +12,7 @@ def auth_user(user : User, password : str) -> bool:
     if user and user.password == password:
         return True
     return False
+
 def get_user_id(user_name, password) -> int:
     user = get_user(user_name)
     if user and user.password == password:
@@ -75,6 +77,15 @@ def get_user_data(data : dict, user : User) -> dict:
         "age": user.age,
         "follow_count": user.follow_count,
         "fans_count": user.fans_count,
+        "user_desc": user.user_desc,
         "profile": profile_url
     }
     return data
+
+def get_now_id() -> int:
+    token = request.headers.get('Authorization')
+    user_id = -1
+    if token:
+        decode = decode_token(token.replace('Bearer ', ''))
+        user_id = decode.get('sub')
+    return user_id

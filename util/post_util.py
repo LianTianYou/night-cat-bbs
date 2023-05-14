@@ -1,5 +1,5 @@
-from tables import User, Comment, Post, PostImages
-from util import img_util, value_util
+from tables import User, Comment, Post, PostImages, History, Like
+from util import img_util, value_util, user_util
 
 
 def get_poster_info(user_id : int) -> dict:
@@ -44,8 +44,14 @@ def get_post_info(post : Post) -> dict:
     post_info = dict()
     post_info['post_time'] = str(post.post_time)
     post_info['like_count'] = post.like_count
-    post_info['comment_count'] = post.comment_count
+    post_info['comment_count'] = Comment.query.filter_by(post_id=post.post_id).count()
+    post_info['access_count'] = post.access_count
     post_info['post_id'] = post.post_id
+    post_info['is_like'] = False
+    user_id = user_util.get_now_id()
+    like = Like.query.filter_by(user_id=user_id, post_id=post.post_id).first()
+    if like:
+        post_info['is_like'] = True
     return post_info
 
 def get_post_images(post_id : int) -> list:
@@ -57,9 +63,27 @@ def get_post_images(post_id : int) -> list:
         images.append(image_url)
     return images
 
+def get_posts(posts : list[Post]) -> list:
+    post_list = []
+
+    for post in posts:
+        post_dict = {'post': get_post_data(post)}
+        post_list.append(post_dict)
+    return post_list
+
 def get_recommend_posts(posts : list) -> list:
     post_list = []
     for post in posts:
         item_dict = get_post_data(post)
         post_list.append(item_dict)
     return post_list
+
+def get_histories(histories : list[History]) -> list:
+    history_list = []
+    for history in histories:
+        history_dict = dict()
+        post = Post.query.get(history.post_id)
+        history_dict['post'] = get_post_data(post)
+        history_dict['access_time'] = str(history.access_time)
+        history_list.append(history_dict)
+    return history_list

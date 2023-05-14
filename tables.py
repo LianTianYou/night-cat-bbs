@@ -16,6 +16,7 @@ class User(db.Model):
     follow_count = db.Column(db.Integer, default=0)
     fans_count = db.Column(db.Integer, default=0)
     signup_time = db.Column(db.Integer, default = datetime.datetime.now)
+    user_desc = db.Column(db.String(255))
 
 # 帖子表
 class Post(db.Model):
@@ -28,6 +29,7 @@ class Post(db.Model):
     post_time = db.Column(db.DateTime, default=datetime.datetime.now)
     like_count = db.Column(db.Integer, default=0)
     comment_count = db.Column(db.Integer, default=0)
+    access_count = db.Column(db.Integer, default=0)
 
 # 帖子图片表
 class PostImages(db.Model):
@@ -56,9 +58,27 @@ class Comment(db.Model):
     content = db.Column(db.Text)
     post_time = db.Column(db.DateTime, default=datetime.datetime.now)
 
+# 关注表
 class Follow(db.Model):
     __tablename__ = 'follow'
 
     follow_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     user_id = db.Column(db.Integer)
     target_id = db.Column()
+
+# 历史记录表
+class History(db.Model):
+    __tablename__ = 'history'
+
+    history_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    post_id = db.Column(db.Integer)
+    user_id = db.Column(db.Integer)
+    access_time = db.Column(db.DateTime, default=datetime.datetime.now)
+
+# 最后访问记录表
+class LastAccess(db.Model):
+    __tablename__ = 'last_access'
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    msg_type = db.Column(db.String(10), nullable=True)
+    last_id = db.Column(db.Integer, nullable=True)

@@ -1,11 +1,13 @@
 import base64
 import io
+import time
 from PIL import Image
 from util import oss_util
 
 def convert_img(data : bytes, size : int) -> bytes:
     img_bytes = io.BytesIO(data)
     img = Image.open(img_bytes)
+    img.show()
     img = img.convert('RGB')
     img.thumbnail((size, size))
     with io.BytesIO() as output:
@@ -13,10 +15,15 @@ def convert_img(data : bytes, size : int) -> bytes:
         data = output.getvalue()
     return data
 
+def get_profile_filename(user_id : int) -> str:
+    rand_code = hex(int(time.time() * 100)).strip('0x')
+    file_name = f'{user_id}_{rand_code}.jpg'
+    return file_name
+
 def upload_profile(data : bytes, user_id : int) -> str:
-    file_name = f'{user_id}.jpg'
-    file_path = f'profile/{file_name}'
     data = convert_img(data, 100)
+    file_name = get_profile_filename(user_id)
+    file_path = f'profile/{file_name}'
     oss_util.upload_file(file_path, data)
     return file_name
 

@@ -1,8 +1,9 @@
+import datetime
 from flask import Blueprint, request, jsonify
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask_jwt_extended import jwt_required, get_jwt_identity, decode_token
 from db import db
-from tables import Post, PostImages, User, Like, Comment
-from util import img_util, oss_util, request_util, post_util, value_util
+from tables import Post, PostImages, User, Like, Comment, History
+from util import img_util, oss_util, request_util, post_util, value_util, user_util, response_util
 
 bp = Blueprint('post', __name__, url_prefix = '/api')
 
@@ -29,9 +30,7 @@ def submit_post():
     title = request.json.get('title')
     content = request.json.get('content')
 
-    if not request_util.check_args(title, content):
-        data['data']['msg'] = '参数错误'
-        data['status'] = 'no'
+    if not request_util.check_args(data, title, content):
         return jsonify(data)
 
     images = request.json.get('images')
@@ -45,8 +44,38 @@ def submit_post():
         commit_post_images(images, post.post_id)
     return jsonify(data)
 
-# 获取帖子内容
+@bp.route('/update_post', methods=['POST'])
+@jwt_required()
+def update_post():
+    data = {
+        'data': {
+            'msg': '修改失败'
+        },
+        'status': 'no'
+    }
 
+    post_id = request.json.get('post_id')
+    post = Post.query.get(post_id)
+
+    title = request.json.get('title')
+    content = request.json.get('content')
+
+    images = request.json.get('images')
+
+    if title:
+        post.title = title
+    if content:
+        post.content = content
+    if images:
+        post.images = images
+
+    db.session.commit()
+    data['data']['body'] = post_util.get_post_data(post)
+
+    response_util.set_ok(data, '修改成功')
+    return jsonify(data)
+
+# 获取帖子内容
 @bp.route("/get_post", methods = ["GET"])
 def get_post():
     data = {
@@ -57,9 +86,7 @@ def get_post():
     }
 
     post_id = request.args.get("post_id")
-    if not request_util.check_args(post_id):
-        data['data']['msg'] = '参数错误'
-        data["status"] = "no"
+    if not request_util.check_args(data, post_id):
         return jsonify(data)
 
     post_id = int(post_id)
@@ -78,28 +105,20 @@ def get_post():
 @bp.route('/search', methods=['GET'])
 def search():
     keyword = request.args.get('keyword')
-    post_list = Post.query.filter(Post.title.like(f'%{keyword}%')).all()
-
-    post_dicts = []
-
-    for post in post_list:
-        post_dict = {
-            "post_id": post.post_id,
-            "title": post.title
-        }
-        post_dicts.append(post_dict)
+    posts = Post.query.filter(Post.title.like(f'%{keyword}%')).all()
 
     data = {
         "data": {
-            "list": post_dicts,
-            "msg": "搜索成功"
+            "items": [],
+            "msg": "结尾为空"
         },
-        "status": "ok"
+        "status": "no"
     }
 
-    if not post_dicts:
-        data["data"]["msg"] = "结果为空"
-        data["status"] = "no"
+    if posts:
+        data['data']['items'] = post_util.get_posts(posts)
+        data["data"]["msg"] = "搜索成功"
+        data["status"] = "ok"
 
     return jsonify(data)
 
@@ -115,9 +134,7 @@ def like():
     post_id = request.json.get('post_id')
     user_id = get_jwt_identity()
 
-    if not request_util.check_args(post_id):
-        data["data"]["msg"] = "参数错误"
-        data["status"] = "no"
+    if not request_util.check_args(data, post_id):
         return jsonify(data)
 
     like = Like.query.filter_by(post_id=post_id, user_id=user_id).first()
@@ -151,12 +168,12 @@ def add_comment():
     content=request.json.get('content')
     user_id=get_jwt_identity()
 
-    if not request_util.check_args(post_id, content):
-        data['data']['msg'] = '参数错误'
+    if not request_util.check_args(data, post_id, content):
         return jsonify(data)
 
     comment = Comment(post_id=post_id, user_id=user_id, content=content)
 
+    post = Post.query.get(post_id)
     db.session.add(comment)
     db.session.commit()
 
@@ -174,10 +191,8 @@ def get_comment():
 
     post_id = request.json.get('post_id')
 
-    if not request_util.check_args(post_id):
-        data['data']['msg'] = '参数错误'
-        data['status'] = 'no'
-
+    if not request_util.check_args(data, post_id):
+        return jsonify(data)
     comments = Comment.query.filter_by(post_id=post_id).all()
     comment_list = []
 
@@ -194,4 +209,57 @@ def get_comment():
 
     data['data']['items'] = comment_list
 
+    return jsonify(data)
+
+def get_time() -> str:
+    return datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+
+@bp.route('/add_history', methods=['POST'])
+@jwt_required()
+def add_history():
+    data = {
+        "data": dict(),
+        "status": "no"
+    }
+
+    post_id = request.json.get('post_id')
+    if not request_util.check_args(data, post_id):
+        return jsonify(data)
+
+    post = Post.query.get(post_id)
+    if not post:
+        data['data']['msg'] = '该用户不存在'
+        data['status'] = 'no'
+
+    history = History.query.filter_by(post_id=post_id).first()
+    if history:
+        history.access_time = get_time()
+    else:
+        post.access_count += 1
+        user_id = get_jwt_identity()
+        history = History(user_id=user_id, post_id=post_id)
+        db.session.add(history)
+
+    db.session.commit()
+
+    data['data']['msg'] = '添加成功'
+    data['status'] = 'ok'
+
+    return jsonify(data)
+
+@bp.route('/get_histories', methods=['GET'])
+@jwt_required()
+def get_histories():
+    data = {
+        'data': dict(),
+        'status': 'no'
+    }
+
+    user_id = get_jwt_identity()
+
+    histories = History.query.filter_by(user_id=user_id).order_by(History.access_time.desc()).all()
+
+    data['data']['items'] = post_util.get_histories(histories)
+    data['status'] = 'ok'
     return jsonify(data)

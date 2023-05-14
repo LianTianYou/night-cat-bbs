@@ -17,8 +17,7 @@ def login():
         "data": dict()
     }
 
-    if not request_util.check_args(user_name, password):
-        data["data"]["msg"] = "参数错误"
+    if not request_util.check_args(data, user_name, password):
         return jsonify(data)
 
     user = user_util.get_user(user_name)

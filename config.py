@@ -8,10 +8,10 @@ JWT_ACCESS_TOKEN_EXPIRES = datetime.timedelta(days=1)
 JWT_SECRET_KEY = 'super-secret'
 
 # mysql
-host = "127.0.0.1"
+host = "47.120.40.123"
 port = 3306
 user = "root"
-password = "root"
+password = "rootroot"
 database = "night_cat_bbs"
 
 SQLALCHEMY_DATABASE_URI = f"mysql+pymysql://{user}:{password}@{host}:{port}/{database}?charset=utf8"

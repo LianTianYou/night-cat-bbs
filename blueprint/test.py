@@ -4,6 +4,7 @@ from flask import Blueprint, jsonify, request
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt, decode_token, get_jwt_identity
 from util import img_util
 from util.request_util import jwt
+from util import config_util
 
 bp = Blueprint("test", __name__, url_prefix = "/test")
 
@@ -34,16 +35,18 @@ def use_token():
 
 @bp.route('/up_file', methods=['POST', 'PUT'])
 def get_file():
-    # print(request.data)
-    # print("=======================================================")
-    # print(request.form)
-    # print("=======================================================")
-    # print(request.files)
-    # print("=======================================================")
     file = request.json.get('file')
     file_data = img_util.base_to_bytes(file)
     with open('11.jpg', 'bw') as f:
         f.write(file_data)
-    print(file_data)
-    print(request.json.get('user_name'))
     return "ok"
+
+@bp.route('/get_headers')
+def get_headers():
+    token = request.headers.get('Authorization')
+    return token
+
+@bp.route('/get_config')
+def get_value():
+    print(config_util.get_value('oss', 'key'))
+    return '...'
